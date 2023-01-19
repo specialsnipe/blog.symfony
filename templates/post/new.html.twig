@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% form_theme form 'bootstrap_4_layout.html.twig' %}
+
+{% block body %}
+    {{ form_start(form) }}
+    <div class="mb-5 w-50">
+        {{ form_row(form.title) }}
+    </div>
+    {{ form_row(form.body, { 'attr': {
+        'rows' : '10',
+        'cols' : '40' }}) }}
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+    {{ form_end(form) }}
+{% endblock %}

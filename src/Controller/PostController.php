@@ -53,14 +53,6 @@ class PostController extends AbstractController
         ]);
     }
 
-    #[Route('/post/{slug}', name: 'post_show')]
-    public function show(Post $post): Response
-    {
-        return $this->render('post/show.html.twig', [
-            'post' => $post,
-        ]);
-    }
-
     #[Route('/post/{slug}/edit', name: 'post_edit')]
     public function edit(Post $post, Request $request, Slugify $slugify)
     {
@@ -90,5 +82,24 @@ class PostController extends AbstractController
         $em->flush();
 
         return $this->redirectToRoute('app_posts');
+    }
+
+    #[Route('posts/search', name: 'blog_search')]
+    public function search(Request $request)
+    {
+        $query = $request->query->get('q');
+        $posts = $this->postRepository->searchByQuery($query);
+
+        return $this->render('post/query_post.html.twig', [
+            'posts' => $posts,
+        ]);
+    }
+
+    #[Route('/post/{slug}', name: 'post_show')]
+    public function show(Post $post): Response
+    {
+        return $this->render('post/show.html.twig', [
+            'post' => $post,
+        ]);
     }
 }

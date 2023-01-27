@@ -5,54 +5,64 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\User;
-use Swift_Mailer;
-use Swift_Message;
-use Twig_Environment;
+use App\Security\EmailVerifier;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+use Symfony\Component\Mime\Address;
+use Twig\Environment;
+use Symfony\Component\Mailer\MailerInterface;
+use SymfonyCasts\Bundle\VerifyEmail\VerifyEmailHelperInterface;
 
 class Mailer
 {
     public const FROM_ADDRESS = 'kafkiansky@php.zone';
 
     /**
-     * @var Swift_Mailer
+     * @var \Swift_Mailer
      */
     private $mailer;
 
+    private EmailVerifier $emailVerifier;
+
     /**
-     * @var Twig_Environment
+     * @var Environment
      */
     private $twig;
 
     public function __construct(
-        Swift_Mailer $mailer,
-        Twig_Environment $twig
-
-    )  {
+        EmailVerifier $emailVerifier,
+        \Swift_Mailer $mailer,
+        Environment $twig
+    ) {
         $this->mailer = $mailer;
         $this->twig = $twig;
-
+        $this->emailVerifier = $emailVerifier;
     }
 
     /**
-     * @param User $user
-     *
-     * @throws \Twig_Error_Loader
-     * @throws \Twig_Error_Runtime
-     * @throws \Twig_Error_Syntax
+     * @throws \Twig\Error\LoaderError
+     * @throws \Twig\Error\RuntimeError
+     * @throws \Twig\Error\SyntaxError
      */
     public function sendConfirmationMessage(User $user)
     {
-        $messageBody = $this->twig->render('security/confirmation.html.twig', [
-            'user' => $user
-        ]);
-
-        $message = new Swift_Message();
-        $message
-            ->setSubject('Вы успешно прошли регистрацию!')
-            ->setFrom(self::FROM_ADDRESS)
-            ->setTo($user->getEmail())
-            ->setBody($messageBody, 'text/html');
-
-        $this->mailer->send($message);
+//        $messageBody = $this->twig->render('registration/confirmation_email.html.twig', [
+//            'user' => $user,
+//        ]);
+//
+//        $message = new \Swift_Message();
+//        $message
+//            ->setSubject('Вы успешно прошли регистрацию!')
+//            ->setFrom(self::FROM_ADDRESS)
+//            ->setTo($user->getEmail())
+//            ->setBody($messageBody, 'text/html');
+//
+//        $this->mailer->send($message);
+        $this->emailVerifier->sendEmailConfirmation('app_verify_email', $user,
+            (new TemplatedEmail())
+                ->from(new Address('specialsnipe1@mail.ru', 'Mail Bot'))
+                ->to($user->getEmail())
+                ->subject('Please Confirm your Email')
+                ->htmlTemplate('registration/confirmation_email.html.twig')
+        );
     }
 }

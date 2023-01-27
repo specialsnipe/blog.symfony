@@ -5,27 +5,43 @@ namespace App\Entity;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'user')]
 #[UniqueEntity(fields: 'email', message: 'У вас уже есть аккаунт')]
-#[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
-#[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
-class User implements UserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    public function __construct()
-    {
-        $this->roles = [self::ROLE_USER];
-        $this->enabled = false;
-    }
+    public const GITHUB_OAUTH = 'Github';
+    public const GOOGLE_OAUTH = 'Google';
+
     public const ROLE_USER = 'ROLE_USER';
+    public const ROLE_ADMIN = 'ROLE_ADMIN';
+
+    public function __construct(
+        int $clientId,
+        string $email,
+        string $username,
+        string $oauthType,
+        array $roles
+    ) {
+        $this->clientId = $clientId;
+        $this->email = $email;
+        $this->username = $username;
+        $this->oauthType = $oauthType;
+        $this->lastLogin = new \DateTimeImmutable();
+        $this->roles = $roles;
+    }
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
+
+    #[ORM\Column(type: 'string', nullable: true)]
+    private int $clientId;
 
     #[ORM\Column(type: 'string', unique: true)]
     #[Assert\NotBlank]
@@ -33,11 +49,20 @@ class User implements UserInterface
     private string $email;
 
     #[ORM\Column(type: 'string')]
+    private string $username;
+
+    #[ORM\Column(type: 'string')]
+    private string $oauthType;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private $lastLogin;
+
+    #[ORM\Column(type: 'string', nullable: true)]
     #[Assert\Length(min: 6, minMessage: 'Пароль должен быть не менее 6 символов')]
-    private string $password;
+    private ?string $password;
 
     #[Assert\NotBlank]
-    private string $plainPassword;
+    private string|null $plainPassword;
 
     #[ORM\Column(type: 'json')]
     private array $roles = [];
@@ -46,10 +71,44 @@ class User implements UserInterface
     private string $confirmationCode;
 
     #[ORM\Column(type: 'boolean')]
-    private bool $enabled;
-
-    #[ORM\Column(type: 'boolean')]
     private $isVerified = false;
+
+    public static function fromGithubRequest(
+        int $clientId,
+        string $email,
+        string $username
+    ): User {
+        return new self(
+            $clientId,
+            $email,
+            $username,
+            self::GITHUB_OAUTH,
+            [self::ROLE_USER]
+        );
+    }
+
+    public static function fromGoogleRequest(
+        string $clientId,
+        string $email,
+        string $username
+    ): User {
+        return new self(
+            $clientId,
+            $email,
+            $username,
+            self::GOOGLE_OAUTH,
+            [self::ROLE_USER]
+        );
+    }
+
+    /**
+     * @param int $clientId
+     */
+    public function setClientId(int $clientId): void
+    {
+        $this->clientId = $clientId;
+    }
+
 
     public function getConfirmationCode(): string
     {
@@ -89,7 +148,7 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
         return $this->password;
     }
